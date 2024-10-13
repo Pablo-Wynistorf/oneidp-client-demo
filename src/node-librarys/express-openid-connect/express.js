@@ -1,5 +1,6 @@
 const express = require('express');
 const { auth, requiresAuth } = require('express-openid-connect');
+const axios = require('axios');
 require('dotenv').config();
 const app = express();
 
@@ -11,8 +12,9 @@ const OIDC_CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET;
 
 // Configuration for OIDC authentication
 const config = {
-  authRequired: false,  // Allow access to public routes
-  auth0Logout: true,    // Enable logout functionality
+  authRequired: false, // Allow access to public routes
+  auth0Logout: false, // Enable logout functionality
+  idpLogout: true, // Perform logout at identity provider
   secret: EXPRESS_SESSION_SECRET, // Session secret
   baseURL: 'http://localhost:3000', // Base URL of the application
   clientID: OIDC_CLIENT_ID, // OIDC client ID
@@ -37,9 +39,20 @@ app.get('/', (req, res) => {
 });
 
 // Define a protected route for user profile information
-app.get('/profile', requiresAuth(), (req, res) => {
-  res.send(JSON.stringify(req.oidc.user, null, 2));
+app.get('/profile', (req, res) => {
+  if (req.oidc.isAuthenticated()) {
+    res.send(JSON.stringify(req.oidc.user));
+  } else {
+    res.redirect('/login');
+  }
 });
+
+app.get('/user-info', (req, res) => {
+req.oidc.fetchUserInfo().then(userInfo => {
+  res.send(JSON.stringify(userInfo));
+});
+});
+
 
 // Start the server and listen on the specified port
 app.listen(PORT, () => {
